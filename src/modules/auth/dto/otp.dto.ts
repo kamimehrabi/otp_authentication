@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsMobilePhone, IsString, Length } from 'class-validator';
-import { UserDto } from 'src/models/dto/UserDto';
 
 export class RequestOtpDto {
     @ApiProperty({ example: '+989123456789' })
@@ -22,7 +21,4 @@ export class VerifyOtpDto {
 export class VerifyOtpResponseDto {
     @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…' })
     token: string;
-
-    @ApiProperty({ type: UserDto })
-    user: UserDto;
 }

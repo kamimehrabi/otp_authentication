@@ -7,6 +7,7 @@ import type { Redis } from 'ioredis';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { UsersService } from '../users/users.service';
 import * as jwt from 'jsonwebtoken';
+import { VerifyOtpResponseDto } from './dto/otp.dto';
 @Injectable()
 export class AuthService {
     private readonly jwtSecret = process.env.JWT_SECRET!;
@@ -32,7 +33,7 @@ export class AuthService {
     async verifyOtp(
         phoneNumber: string,
         otp: string,
-    ): Promise<{ token: string }> {
+    ): Promise<VerifyOtpResponseDto> {
         const key = `otp:${phoneNumber}`;
 
         const foundKey = await this.redis.get(key);
