@@ -1,4 +1,3 @@
-// src/users/users.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User, UserFields } from 'src/models/User';
