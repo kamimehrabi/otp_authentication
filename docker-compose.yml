@@ -2,7 +2,7 @@ services:
   redis:
     env_file:
       - .env  
-    image: redis:7.0-alpine
+    image: redis:latest
     container_name: redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
