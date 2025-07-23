@@ -1,4 +1,4 @@
-import { RedisModule } from '@liaoliaots/nestjs-redis';
+import { RedisModule } from '@nestjs-modules/ioredis';
 import { Module } from '@nestjs/common';
 import { AuthService } from './modules/auth/auth.service';
 import { AuthController } from './modules/auth/auth.controller';
@@ -10,11 +10,8 @@ import { User } from './models/User';
 @Module({
     imports: [
         RedisModule.forRoot({
-            config: {
-                host: process.env.REDIS_HOST,
-                port: Number(process.env.REDIS_PORT),
-                password: process.env.REDIS_PASSWORD || undefined,
-            },
+            type: 'single',
+            url: process.env.REDIS_URL,
         }),
         SequelizeModule.forRoot({
             dialect: 'mysql',
@@ -25,7 +22,7 @@ import { User } from './models/User';
             database: process.env.DB_NAME,
             models: [User],
             autoLoadModels: true,
-            synchronize: true,
+            logging: false,
         }),
         AuthModule,
         UsersModule,
