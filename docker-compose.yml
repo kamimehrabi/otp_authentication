@@ -1,14 +1,70 @@
-version: '3.8'
-
 services:
   redis:
+    env_file:
+      - .env  
     image: redis:7.0-alpine
-    container_name: my-redis
+    container_name: redis
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - backend
+
+  db:
+    env_file:
+      - .env  
+    image: mysql:latest
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE:     ${MYSQL_DATABASE:-myapp}
+      MYSQL_USER:         ${MYSQL_USER:-appuser}
+      MYSQL_PASSWORD:     ${MYSQL_PASSWORD:-apppass}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  app:
+    build: .
+    env_file:
+      - .env  
+    container_name: my-app
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    environment:
+      REDIS_URL:    redis://redis:6379
+      DB_HOST:      db
+      DB_PORT:      3306
+      DB_USER:      ${MYSQL_USER}
+      DB_PASS:      ${MYSQL_PASSWORD}
+      DB_NAME:      ${MYSQL_DATABASE}
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
 
 volumes:
   redis-data:
+  mysql-data:
+
+networks:
+  backend:
