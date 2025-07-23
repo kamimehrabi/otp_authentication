@@ -52,21 +52,26 @@ A simple authentication microservice built with NestJS, using Redis for OTP mana
 Copy `.env.example` to `.env` and adjust values:
 
 ```dotenv
-# Application
+# ─── Application ─────────────────────────────────────────────
 PORT=3000
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=thisIsNotASecret
 
-# Redis (OTP + rate limiting)
-REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=
+# ─── Redis (OTP + rate limiting) ─────────────────────────────
+# for local dev you’ll hit localhost; in Docker Compose the service name “redis” is used
+REDIS_URL=redis://localhost:6379
 
-# MySQL (user storage)
-DB_HOST=db
+# ─── MySQL for NestJS (local dev) ────────────────────────────
+DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_USER=appuser
-DB_PASS=apppass
-DB_NAME=myapp
-```
+DB_USER=root
+DB_PASS=password
+DB_NAME=otp
+
+# ─── MySQL for Docker Compose (db service) ──────────────────
+MYSQL_ROOT_PASSWORD=supersecretroot
+MYSQL_DATABASE=myapp
+MYSQL_USER=appuser
+MYSQL_PASSWORD=apppass
 
 ---
 
