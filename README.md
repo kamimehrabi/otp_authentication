@@ -1,98 +1,169 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS OTP Authentication Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A simple authentication microservice built with NestJS, using Redis for OTP management and MySQL for persistent user storage. The service allows users to request a one-time passcode (OTP) via their mobile number and verify it to receive a JWT token.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🎯 Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **OTP Request & Verification** via phone number
+- **Rate Limiting**: prevent excessive OTP requests in a time window
+- **JWT Generation** on successful verification
+- **Persistent User Storage** in MySQL (phone number & registration date)
+- **Ephemeral Data** (OTP, rate-limits) stored in Redis for fast TTL-based operations
+- **Containerized** with Docker & Docker Compose
+- **Swagger UI** for interactive API documentation
 
-## Project setup
+- **NestJS API** handles HTTP requests, orchestrates Redis and MySQL operations.
+- **Redis** is chosen for OTP storage and rate limiting because of its in-memory speed, native TTL support, and atomic increments—ideal for ephemeral, time‑bound data.
+- **MySQL** is chosen for user data persistence (phone number, registration date) to ensure ACID compliance and easy querying for potential future features.
 
-```bash
-$ yarn install
+---
+
+## 📂 Data Model
+
+### User (MySQL)
+
+| Field         | Type     | Description                        |
+| ------------- | -------- | ---------------------------------- |
+| `id`          | INT (PK) | Auto‑incremented unique identifier |
+| `phoneNumber` | VARCHAR  | User's mobile number               |
+| `firstName`   | VARCHAR  | (Optional) user's first name       |
+| `lastName`    | VARCHAR  | (Optional) user's last name        |
+| `username`    | VARCHAR  | (Optional) display/login name      |
+| `createdAt`   | DATETIME | Registration timestamp             |
+| `updatedAt`   | DATETIME | Last update timestamp              |
+
+### OTP & Rate Limiting (Redis)
+
+- **Key**: `otp:<phoneNumber>` → **Value**: `6-digit code`, TTL (e.g. 60 s)
+- **Key**: `otp_count:<phoneNumber>` → **Value**: integer count, TTL window (e.g. 1 h)
+
+**Rate Limiting Logic**:
+
+1. Increment `otp_count:<phone>` on each request (expire after window).
+2. Reject if count exceeds threshold (e.g. 5 per hour).
+3. Store OTP under `otp:<phone>` with 60 s TTL.
+
+---
+
+## 🔧 Environment Variables
+
+Copy `.env.example` to `.env` and adjust values:
+
+```dotenv
+# Application
+PORT=3000
+JWT_SECRET=your_jwt_secret
+
+# Redis (OTP + rate limiting)
+REDIS_URL=redis://redis:6379
+REDIS_PASSWORD=
+
+# MySQL (user storage)
+DB_HOST=db
+DB_PORT=3306
+DB_USER=appuser
+DB_PASS=apppass
+DB_NAME=myapp
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ yarn run start
+## 🚀 Local Development
 
-# watch mode
-$ yarn run start:dev
+1. **Install dependencies**
+    ```bash
+    yarn install
+    ```
 
-# production mode
-$ yarn run start:prod
+````
+2. **Start Redis & MySQL** (if you have locally)
+   ```bash
+redis-server --port 6379
+# MySQL already running on port 3306
+````
+
+3. **Run NestJS**
+    ```bash
+    yarn start:dev
+    ```
+
+```
+4. **Browse API docs**
 ```
 
-## Run tests
+http://localhost:3000/docs
+
+````
+
+---
+
+## 🐳 Docker Compose
+
+Bring up the entire stack (Redis, MySQL, API):
 
 ```bash
-# unit tests
-$ yarn run test
+docker-compose up --build -d
+````
 
-# e2e tests
-$ yarn run test:e2e
+- **Redis**: OTP & rate limiter
+- **db (MySQL)**: persistent user store
+- **app**: NestJS server on port 3000
 
-# test coverage
-$ yarn run test:cov
-```
+### Logs
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+View OTP and app logs:
 
 ```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
+docker-compose logs -f app
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 📦 API Endpoints
 
-Check out a few resources that may come in handy when working with NestJS:
+| Method | Path                | Description                          |
+| ------ | ------------------- | ------------------------------------ |
+| POST   | `/auth/otp/request` | Request an OTP (check server logs)   |
+| POST   | `/auth/otp/verify`  | Verify OTP & receive JWT + user data |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Request OTP
 
-## Support
+```http
+POST /auth/otp/request
+Content-Type: application/json
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+{ "phoneNumber": "+989123456789" }
+```
 
-## Stay in touch
+### Verify OTP
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```http
+POST /auth/otp/verify
+Content-Type: application/json
 
-## License
+{ "phoneNumber": "+989123456789", "otp": "123456" }
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Response (`200 OK`):
+
+```json
+{
+    "token": "<jwt_token>"
+}
+```
+
+---
+
+## 📖 Rationale for Database Choices
+
+- **Redis**:
+    - In-memory storage with low latency.
+    - Native TTL support for automatic expiration of OTPs.
+    - Atomic operations for rate limiting counters.
+
+- **MySQL**:
+    - Persistent, ACID-compliant storage for user data.
+    - Easy to extend schema for future relational data.
+    - Widely supported and well-understood by operational teams.
